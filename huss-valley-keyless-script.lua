@@ -4045,7 +4045,7 @@ local windowHeight = math.max(380, math.min(680, viewport.Y - 48))
 
 local Window = WindUI:CreateWindow({
     Title = "K0rdHub",
-    Icon = "rbxassetid://85843034842504",
+    Icon = "rbxthumb://type=Asset&id=85843034842504&w=150&h=150",
     IconThemed = false,
     IconSize = 24,
     Author = "K0rdHub",
