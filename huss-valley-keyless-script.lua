@@ -5373,8 +5373,11 @@ WindUI:Notify({
 })
 
 local SPEED_RENDER_NAME = "CoH_SpeedOverride"
-RunService:UnbindFromRenderStep(SPEED_RENDER_NAME)
-RunService:BindToRenderStep(SPEED_RENDER_NAME, Enum.RenderPriority.Input.Value + 2, function()
+local RENDER_NAME = "CoH_StableController"
+local controllerInterval = IS_MOBILE and (1 / 30) or 0
+local lastControllerTick = os.clock()
+
+local function speedOverrideStep()
     local role = getRole()
     local character = getCharacter()
     local hum = getHumanoid()
@@ -5399,18 +5402,13 @@ RunService:BindToRenderStep(SPEED_RENDER_NAME, Enum.RenderPriority.Input.Value +
             hum.WalkSpeed = desiredSpeed
         end
     end
-end)
+end
 
-local RENDER_NAME = "CoH_StableController"
-RunService:UnbindFromRenderStep(RENDER_NAME)
-local controllerInterval = IS_MOBILE and (1 / 30) or 0
-local lastControllerTick = os.clock()
-
-RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Input.Value, function(dt)
+local function stableControllerStep(dt)
     local now = os.clock()
     local ok, err
     if now - lastControllerTick >= controllerInterval then
-        local controllerDt = math.max(dt, now - lastControllerTick)
+        local controllerDt = math.max(dt or 0, now - lastControllerTick)
         lastControllerTick = now
         ok, err = pcall(runnerStep, now, controllerDt)
         if not ok then
@@ -5438,7 +5436,45 @@ RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Input.Value, functi
             setDebugError("DebugPanel: " .. tostring(debugErr))
         end
     end
-end)
+end
+
+-- Prefer frame-bound updates when RunService is available. Some execution
+-- environments return nil for this service, so use a task loop as a fallback.
+local hasRenderBinding = RunService ~= nil
+    and type(RunService.BindToRenderStep) == "function"
+    and type(RunService.UnbindFromRenderStep) == "function"
+
+if hasRenderBinding then
+    pcall(function() RunService:UnbindFromRenderStep(SPEED_RENDER_NAME) end)
+    pcall(function() RunService:UnbindFromRenderStep(RENDER_NAME) end)
+
+    RunService:BindToRenderStep(SPEED_RENDER_NAME, Enum.RenderPriority.Input.Value + 2, speedOverrideStep)
+    RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Input.Value, stableControllerStep)
+else
+    task.spawn(function()
+        while not Hub.cleaned do
+            local ok, err = pcall(speedOverrideStep)
+            if not ok then
+                setDebugError("SpeedOverride: " .. tostring(err))
+            end
+            task.wait(1 / 60)
+        end
+    end)
+
+    task.spawn(function()
+        local previous = os.clock()
+        while not Hub.cleaned do
+            local now = os.clock()
+            local dt = now - previous
+            previous = now
+            local ok, err = pcall(stableControllerStep, dt)
+            if not ok then
+                setDebugError("Controller: " .. tostring(err))
+            end
+            task.wait(1 / 60)
+        end
+    end)
+end
 
 -- NOTE: `script` is nil when running through an executor (loadstring), which caused
 -- "attempt to index nil with 'Destroying'". Cleanup is now a plain function that is
