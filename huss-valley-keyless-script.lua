@@ -19,6 +19,108 @@ if previousUnload then
 end
 
 local LocalPlayer = Players.LocalPlayer
+
+-- Standalone K0rdHub logo splash (does not depend on WindUI).
+-- The popup appears briefly when the script starts, then removes itself.
+local function showK0rdHubLogoPopup()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    local oldPopup = playerGui:FindFirstChild("K0rdHubLogoPopup")
+    if oldPopup then
+        oldPopup:Destroy()
+    end
+
+    local popupGui = Instance.new("ScreenGui")
+    popupGui.Name = "K0rdHubLogoPopup"
+    popupGui.ResetOnSpawn = false
+    popupGui.IgnoreGuiInset = true
+    popupGui.DisplayOrder = 10000
+    popupGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    popupGui.Parent = playerGui
+
+    local card = Instance.new("Frame")
+    card.Name = "LogoCard"
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.42)
+    card.Size = UDim2.fromOffset(170, 170)
+    card.BackgroundColor3 = Color3.fromRGB(13, 13, 15)
+    card.BackgroundTransparency = 0.08
+    card.BorderSizePixel = 0
+    card.Parent = popupGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 14)
+    corner.Parent = card
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(225, 28, 40)
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.12
+    stroke.Parent = card
+
+    local logo = Instance.new("ImageLabel")
+    logo.Name = "Logo"
+    logo.BackgroundTransparency = 1
+    logo.AnchorPoint = Vector2.new(0.5, 0.5)
+    logo.Position = UDim2.fromScale(0.5, 0.46)
+    logo.Size = UDim2.fromOffset(112, 112)
+    logo.Image = "rbxassetid://85843034842504"
+    logo.ScaleType = Enum.ScaleType.Fit
+    logo.Parent = card
+
+    local title = Instance.new("TextLabel")
+    title.Name = "HubTitle"
+    title.BackgroundTransparency = 1
+    title.AnchorPoint = Vector2.new(0.5, 1)
+    title.Position = UDim2.new(0.5, 0, 1, -13)
+    title.Size = UDim2.new(1, -16, 0, 22)
+    title.Font = Enum.Font.GothamBold
+    title.Text = "K0rdHub"
+    title.TextColor3 = Color3.fromRGB(245, 245, 245)
+    title.TextSize = 15
+    title.Parent = card
+
+    card.Size = UDim2.fromOffset(145, 145)
+    card.BackgroundTransparency = 1
+    stroke.Transparency = 1
+    logo.ImageTransparency = 1
+    title.TextTransparency = 1
+
+    local TweenService = game:GetService("TweenService")
+    local showInfo = TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    TweenService:Create(card, showInfo, {
+        Size = UDim2.fromOffset(170, 170),
+        BackgroundTransparency = 0.08,
+    }):Play()
+    TweenService:Create(stroke, TweenInfo.new(0.22), {Transparency = 0.12}):Play()
+    TweenService:Create(logo, TweenInfo.new(0.25), {ImageTransparency = 0}):Play()
+    TweenService:Create(title, TweenInfo.new(0.25), {TextTransparency = 0}):Play()
+
+    task.delay(2.2, function()
+        if not popupGui.Parent then
+            return
+        end
+        local fadeInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        TweenService:Create(card, fadeInfo, {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromOffset(145, 145),
+        }):Play()
+        TweenService:Create(stroke, fadeInfo, {Transparency = 1}):Play()
+        TweenService:Create(logo, fadeInfo, {ImageTransparency = 1}):Play()
+        TweenService:Create(title, fadeInfo, {TextTransparency = 1}):Play()
+        task.delay(0.3, function()
+            if popupGui.Parent then
+                popupGui:Destroy()
+            end
+        end)
+    end)
+end
+
+task.spawn(function()
+    local ok, err = pcall(showK0rdHubLogoPopup)
+    if not ok then
+        warn("[K0rdHub] Logo popup failed: " .. tostring(err))
+    end
+end)
 local COH = ReplicatedStorage:WaitForChild("ChickenOrHero")
 local Movement = COH:WaitForChild("Movement")
 local MovementProfiles = require(Movement:WaitForChild("MovementProfiles"))
@@ -4045,9 +4147,6 @@ local windowHeight = math.max(380, math.min(680, viewport.Y - 48))
 
 local Window = WindUI:CreateWindow({
     Title = "K0rdHub",
-    Icon = "rbxthumb://type=Asset&id=85843034842504&w=150&h=150",
-    IconThemed = false,
-    IconSize = 24,
     Author = "K0rdHub",
     Folder = "HussValley",
     Size = UDim2.fromOffset(windowWidth, windowHeight),
